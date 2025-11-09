@@ -1,26 +1,73 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useWalletStore } from '@/store/walletStore'
 import { useIPStore } from '@/store/ipStore'
+import { useToastStore } from '@/store/toastStore'
+import { IPAsset } from '@/types'
 import WalletConnect from './WalletConnect'
 import IPRegistrationForm from './IPRegistrationForm'
 import IPGraph from './IPGraph'
 import AssetList from './AssetList'
 import IPDetailModal from './IPDetailModal'
-import { Plus, LayoutGrid, List, Network, Sparkles, TrendingUp } from 'lucide-react'
+import SearchFilter, { FilterOptions } from './SearchFilter'
+import ExportMenu from './ExportMenu'
+import Analytics from './Analytics'
+import { Plus, LayoutGrid, List, Network, Sparkles, TrendingUp, BarChart3 } from 'lucide-react'
 
-type ViewMode = 'graph' | 'list' | 'register' | 'my-assets' | 'discover'
+type ViewMode = 'graph' | 'list' | 'register' | 'my-assets' | 'discover' | 'analytics'
 
 export default function Dashboard() {
   const { isConnected, address } = useWalletStore()
   const { assets, getAssetsByCreator } = useIPStore()
+  const { addToast } = useToastStore()
   const [viewMode, setViewMode] = useState<ViewMode>('graph')
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
   const [remixParentId, setRemixParentId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState<FilterOptions>({
+    licenseTypes: [],
+    ipTypes: [],
+    tags: [],
+  })
 
-  const myAssets = address ? getAssetsByCreator(address) : []
-  const publicAssets = assets.filter((asset) => !address || asset.creator.toLowerCase() !== address.toLowerCase())
+  const filterAssets = (assetList: IPAsset[]) => {
+    return assetList.filter((asset) => {
+      // Search filter
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch = !searchQuery || 
+        asset.title.toLowerCase().includes(searchLower) ||
+        asset.description.toLowerCase().includes(searchLower) ||
+        asset.creator.toLowerCase().includes(searchLower) ||
+        asset.tags.some(tag => tag.toLowerCase().includes(searchLower))
+      
+      // License type filter
+      const matchesLicense = filters.licenseTypes.length === 0 || 
+        filters.licenseTypes.includes(asset.licenseType)
+      
+      // IP type filter
+      const matchesIPType = filters.ipTypes.length === 0 || 
+        filters.ipTypes.includes(asset.ipType)
+      
+      // Tags filter
+      const matchesTags = filters.tags.length === 0 || 
+        filters.tags.some(tag => asset.tags.includes(tag))
+      
+      return matchesSearch && matchesLicense && matchesIPType && matchesTags
+    })
+  }
+
+  const myAssets = useMemo(() => {
+    const userAssets = address ? getAssetsByCreator(address) : []
+    return filterAssets(userAssets)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, getAssetsByCreator, searchQuery, filters])
+  
+  const publicAssets = useMemo(() => {
+    const publicList = assets.filter((asset: IPAsset) => !address || asset.creator.toLowerCase() !== address.toLowerCase())
+    return filterAssets(publicList)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, address, searchQuery, filters])
 
   const stats = {
     totalIPs: assets.length,
@@ -114,6 +161,17 @@ export default function Dashboard() {
               Discover
             </button>
             <button
+              onClick={() => setViewMode('analytics')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${
+                viewMode === 'analytics'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-800/50 text-gray-300 hover:bg-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </button>
+            <button
               onClick={() => {
                 setRemixParentId(null)
                 setViewMode('register')
@@ -172,26 +230,91 @@ export default function Dashboard() {
 
         {viewMode === 'my-assets' && (
           <div>
-            <h2 className="text-2xl font-bold text-white mb-6">My Assets</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">My Assets</h2>
+              {myAssets.length > 0 && <ExportMenu assets={myAssets} label="Export My Assets" />}
+            </div>
             {!isConnected ? (
               <div className="text-center py-12 bg-slate-900/30 rounded-lg border border-slate-700">
                 <p className="text-gray-400 mb-4">Please connect your wallet to view your assets</p>
                 <WalletConnect />
               </div>
-            ) : myAssets.length === 0 ? (
+            ) : (
+              <>
+                <SearchFilter
+                  onSearchChange={setSearchQuery}
+                  onFilterChange={setFilters}
+                />
+                {myAssets.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-900/30 rounded-lg border border-slate-700">
+                    <p className="text-gray-400 mb-4">No assets found matching your criteria</p>
+                    {(searchQuery || filters.licenseTypes.length > 0 || filters.ipTypes.length > 0 || filters.tags.length > 0) ? (
+                      <button
+                        onClick={() => {
+                          setSearchQuery('')
+                          setFilters({ licenseTypes: [], ipTypes: [], tags: [] })
+                        }}
+                        className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        Clear Filters
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setViewMode('register')}
+                        className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        Register Your First IP
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <AssetList
+                    assets={myAssets}
+                    onRemix={(assetId) => {
+                      setRemixParentId(assetId)
+                      setViewMode('register')
+                    }}
+                    onViewDetails={(assetId) => setSelectedAssetId(assetId)}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'discover' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Discover Public IPs</h2>
+              {publicAssets.length > 0 && <ExportMenu assets={publicAssets} label="Export" />}
+            </div>
+            <SearchFilter
+              onSearchChange={setSearchQuery}
+              onFilterChange={setFilters}
+            />
+            {publicAssets.length === 0 ? (
               <div className="text-center py-12 bg-slate-900/30 rounded-lg border border-slate-700">
-                <p className="text-gray-400 mb-4">You haven't registered any IP assets yet</p>
-                <button
-                  onClick={() => setViewMode('register')}
-                  className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-colors"
-                >
-                  Register Your First IP
-                </button>
+                <p className="text-gray-400 mb-2">No assets found</p>
+                {(searchQuery || filters.licenseTypes.length > 0 || filters.ipTypes.length > 0 || filters.tags.length > 0) && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setFilters({ licenseTypes: [], ipTypes: [], tags: [] })
+                    }}
+                    className="mt-3 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             ) : (
               <AssetList
-                assets={myAssets}
+                assets={publicAssets}
                 onRemix={(assetId) => {
+                  if (!isConnected) {
+                    addToast('Please connect your wallet to create a remix', 'warning')
+                    return
+                  }
                   setRemixParentId(assetId)
                   setViewMode('register')
                 }}
@@ -201,27 +324,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {viewMode === 'discover' && (
+        {viewMode === 'analytics' && (
           <div>
-            <h2 className="text-2xl font-bold text-white mb-6">Discover Public IPs</h2>
-            {publicAssets.length === 0 ? (
-              <div className="text-center py-12 bg-slate-900/30 rounded-lg border border-slate-700">
-                <p className="text-gray-400">No public IPs available yet</p>
-              </div>
-            ) : (
-              <AssetList
-                assets={publicAssets}
-                onRemix={(assetId) => {
-                  if (!isConnected) {
-                    alert('Please connect your wallet to create a remix')
-                    return
-                  }
-                  setRemixParentId(assetId)
-                  setViewMode('register')
-                }}
-                onViewDetails={(assetId) => setSelectedAssetId(assetId)}
-              />
-            )}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Analytics & Insights</h2>
+              {assets.length > 0 && <ExportMenu assets={assets} label="Export All Data" />}
+            </div>
+            <Analytics assets={assets} />
           </div>
         )}
       </main>
@@ -233,7 +342,7 @@ export default function Dashboard() {
           onClose={() => setSelectedAssetId(null)}
           onRemix={(assetId) => {
             if (!isConnected) {
-              alert('Please connect your wallet to create a remix')
+              addToast('Please connect your wallet to create a remix', 'warning')
               return
             }
             setRemixParentId(assetId)

@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react'
 import { useWalletStore } from '@/store/walletStore'
 import { useIPStore } from '@/store/ipStore'
+import { useToastStore } from '@/store/toastStore'
 import { StoryProtocolService } from '@/lib/storyProtocol'
 import { LicenseType, IPAsset } from '@/types'
 import { Upload, X, Loader2 } from 'lucide-react'
@@ -21,6 +22,7 @@ const TAGS = ['AI', 'Music', 'Code', 'Art', 'Writing', 'Video', 'Design', 'Data'
 export default function IPRegistrationForm({ onSuccess, parentId }: { onSuccess?: () => void; parentId?: string }) {
   const { isConnected, address, signer } = useWalletStore()
   const { addAsset, createRemix, getAsset } = useIPStore()
+  const { addToast } = useToastStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [formData, setFormData] = useState({
@@ -34,12 +36,12 @@ export default function IPRegistrationForm({ onSuccess, parentId }: { onSuccess?
     e.preventDefault()
 
     if (!isConnected || !address) {
-      alert('Please connect your wallet first')
+      addToast('Please connect your wallet first', 'warning')
       return
     }
 
     if (!formData.title.trim()) {
-      alert('Please enter a title')
+      addToast('Please enter a title', 'warning')
       return
     }
 
@@ -129,14 +131,13 @@ export default function IPRegistrationForm({ onSuccess, parentId }: { onSuccess?
       })
       setSelectedFile(null)
 
+      addToast(parentId ? 'Remix created successfully!' : 'IP asset registered successfully!', 'success')
       if (onSuccess) {
         onSuccess()
-      } else {
-        alert('IP asset registered successfully!')
       }
     } catch (error) {
       console.error('Error registering IP:', error)
-      alert('Failed to register IP asset. Please try again.')
+      addToast('Failed to register IP asset. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }

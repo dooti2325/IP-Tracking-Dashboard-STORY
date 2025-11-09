@@ -2,6 +2,7 @@
 
 import { useIPStore } from '@/store/ipStore'
 import { useWalletStore } from '@/store/walletStore'
+import { useToastStore } from '@/store/toastStore'
 import { IPAsset } from '@/types'
 import { ExternalLink, Copy, DollarSign, Layers } from 'lucide-react'
 import { useState } from 'react'
@@ -14,6 +15,7 @@ interface AssetListProps {
 
 export default function AssetList({ assets, onRemix, onViewDetails }: AssetListProps) {
   const { address } = useWalletStore()
+  const { addToast } = useToastStore()
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -34,7 +36,7 @@ export default function AssetList({ assets, onRemix, onViewDetails }: AssetListP
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    alert('Copied to clipboard!')
+    addToast('Copied to clipboard!', 'success', 2000)
   }
 
   if (assets.length === 0) {

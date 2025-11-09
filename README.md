@@ -19,12 +19,22 @@ The Story IP Dashboard is an MVP that demonstrates how creators can:
 
 ### Core MVP Features
 
-- ✅ **Wallet Integration** - Connect Story-compatible wallet via MetaMask
+- ✅ **Wallet Integration** - Connect Story-compatible wallet via MetaMask with auto-reconnect
 - ✅ **IP Registration** - Upload & mint asset metadata to Story Protocol
 - ✅ **Smart Licensing** - Select license type (CC0, CC-BY, Commercial, etc.)
-- ✅ **Graph Visualization** - D3.js-based visual IP lineage map
+- ✅ **Graph Visualization** - D3.js-based visual IP lineage map with zoom/pan controls
 - ✅ **Dashboard View** - Manage originals, derivatives, remixes, and track usage
 - ✅ **Mock Royalties** - Display simulated royalty flows for demo
+
+### Enhanced Features
+
+- ✅ **Toast Notifications** - Beautiful, non-intrusive notifications for all actions
+- ✅ **Advanced Search & Filter** - Search by title, creator, or tags with multi-filter support
+- ✅ **Interactive Graph Controls** - Zoom in/out, pan, reset, and fit-to-view functionality
+- ✅ **Data Export** - Export IP data in JSON, CSV, or graph-specific formats
+- ✅ **Analytics Dashboard** - Comprehensive insights with charts and statistics
+- ✅ **Loading States** - Skeleton screens for better UX during data loading
+- ✅ **Responsive Design** - Fully responsive across desktop, tablet, and mobile
 
 ### User Journey
 
@@ -43,6 +53,43 @@ The Story IP Dashboard is an MVP that demonstrates how creators can:
    - View owned IPs
    - Track derivatives and remixes
    - Monitor revenue (mock data)
+
+## 🎨 Dashboard Views
+
+### IP Graph
+- Interactive force-directed graph visualization
+- Zoom controls (in/out, reset, fit to view)
+- Real-time node dragging and repositioning
+- Color-coded nodes by IP type
+- Detailed tooltips on hover
+- Visual legend for easy identification
+
+### My Assets
+- Comprehensive list of your registered IP assets
+- Search and filter by license type, IP type, and tags
+- Quick actions: view details, create remix
+- Export functionality (JSON, CSV, Graph)
+- Real-time statistics and revenue tracking
+
+### Discover
+- Browse all public IP assets
+- Advanced filtering options
+- Create remixes from discovered assets
+- Detailed asset information modal
+
+### Analytics
+- Overview cards with key metrics
+- License type distribution chart
+- Popular tags analysis
+- Most remixed asset highlights
+- Revenue and royalty insights
+
+### Register IP
+- User-friendly form for IP registration
+- File upload support (mock IPFS)
+- Multiple license type options
+- Tag-based categorization
+- Parent IP selection for remixes
 
 ## 🚀 Getting Started
 
@@ -93,24 +140,36 @@ The Story IP Dashboard is an MVP that demonstrates how creators can:
 ```
 Story-IP/
 ├── app/                    # Next.js app directory
-│   ├── layout.tsx         # Root layout
-│   ├── page.tsx            # Home page
-│   └── globals.css         # Global styles
-├── components/             # React components
-│   ├── Dashboard.tsx       # Main dashboard
-│   ├── WalletConnect.tsx   # Wallet connection
+│   ├── layout.tsx         # Root layout with metadata
+│   ├── ClientLayout.tsx   # Client-side wrapper for hooks
+│   ├── page.tsx           # Home page
+│   └── globals.css        # Global styles & animations
+├── components/            # React components
+│   ├── Dashboard.tsx      # Main dashboard with routing
+│   ├── WalletConnect.tsx  # Wallet connection UI
 │   ├── IPRegistrationForm.tsx  # IP registration form
-│   ├── IPGraph.tsx         # D3.js graph visualization
-│   ├── AssetList.tsx       # Asset list component
-│   └── IPDetailModal.tsx   # IP detail modal
-├── store/                  # State management
-│   ├── walletStore.ts      # Wallet state
-│   └── ipStore.ts          # IP assets state
-├── lib/                    # Utilities
-│   └── storyProtocol.ts    # Mock Story Protocol integration
-├── types/                  # TypeScript types
-│   └── index.ts            # Type definitions
-└── package.json            # Dependencies
+│   ├── IPGraph.tsx        # D3.js graph with zoom controls
+│   ├── AssetList.tsx      # Asset list with actions
+│   ├── IPDetailModal.tsx  # IP detail modal
+│   ├── SearchFilter.tsx   # Advanced search & filter
+│   ├── ExportMenu.tsx     # Data export dropdown
+│   ├── Analytics.tsx      # Analytics dashboard
+│   ├── Toast.tsx          # Toast notification component
+│   ├── ToastContainer.tsx # Toast container manager
+│   └── LoadingSkeleton.tsx # Loading state skeletons
+├── store/                 # Zustand state management
+│   ├── walletStore.ts     # Wallet connection state
+│   ├── ipStore.ts         # IP assets state
+│   └── toastStore.ts      # Toast notifications state
+├── lib/                   # Utilities
+│   ├── storyProtocol.ts   # Mock Story Protocol service
+│   └── exportUtils.ts     # Export functionality
+├── hooks/                 # Custom React hooks
+│   └── useAutoConnect.ts  # Auto wallet reconnection
+├── types/                 # TypeScript definitions
+│   ├── index.ts           # Core type definitions
+│   └── ethereum.d.ts      # MetaMask/Ethereum types
+└── package.json           # Dependencies
 ```
 
 ## 🔑 Key Components
@@ -183,9 +242,67 @@ The dashboard supports multiple license types:
 
 3. **Visualize Graph**
    - Navigate to "IP Graph"
-   - See all IPs and their relationships
+   - Use zoom controls to navigate
    - Click nodes to view details
    - Drag nodes to rearrange
+   - Export graph data
+
+4. **Search & Filter**
+   - Use the search bar to find assets
+   - Apply filters by license, type, or tags
+   - Clear filters to reset view
+   - Export filtered results
+
+5. **View Analytics**
+   - Navigate to "Analytics"
+   - Review license distribution
+   - Check popular tags
+   - Identify top-performing assets
+   - Export comprehensive reports
+
+## 🎯 Key Enhancements
+
+### Toast Notification System
+Modern, non-intrusive notifications replace traditional alerts:
+- Success notifications for completed actions
+- Error messages with helpful context
+- Warning alerts for required actions
+- Info messages for system updates
+- Auto-dismiss with manual close option
+
+### Advanced Search & Filter
+Powerful filtering system for finding assets:
+- Full-text search across title, description, and creator
+- Multi-select license type filtering
+- IP type filtering (Original, Remix, Derivative)
+- Tag-based filtering with AND logic
+- Real-time results with filter count badge
+- Clear all filters functionality
+
+### Interactive Graph Controls
+Enhanced D3.js visualization with:
+- **Zoom In/Out** - Precise zoom controls
+- **Pan** - Click and drag to navigate
+- **Reset View** - Return to default position
+- **Fit to View** - Auto-center all nodes
+- **Zoom Level Indicator** - Current zoom percentage
+- **Visual Legend** - Color-coded node types
+- **Drag & Drop** - Reposition individual nodes
+
+### Data Export Options
+Export your IP data in multiple formats:
+- **JSON** - Full data export with all metadata
+- **CSV** - Spreadsheet-compatible format
+- **Graph Data** - Nodes and links for external visualization tools
+- Available on My Assets, Discover, and Analytics views
+
+### Analytics Dashboard
+Comprehensive insights including:
+- **Overview Cards** - Total assets, revenue, derivatives, top license
+- **License Distribution** - Visual breakdown with percentages
+- **Popular Tags** - Top 5 most-used tags with rankings
+- **Most Remixed Asset** - Highlight successful IP assets
+- **Real-time Statistics** - Dynamic calculations
 
 ## 🔮 Future Scope
 

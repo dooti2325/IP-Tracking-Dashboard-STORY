@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import ClientLayout from './ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Story IP Dashboard - Visualize, Manage, and Monetize Your Creative Graph',
-  description: 'A web-based dashboard built on Story Protocol that lets users register, visualize, and control their digital intellectual property',
+  title: 'Story IP Dashboard',
+  description: 'Visualize, Manage, and Monetize Your Creative Graph',
 }
 
 export default function RootLayout({
@@ -16,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ClientLayout>{children}</ClientLayout>
+      </body>
     </html>
   )
 }

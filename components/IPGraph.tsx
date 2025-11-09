@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { useIPStore } from '@/store/ipStore'
 import { IPGraphNode, IPGraphEdge } from '@/types'
+import { ZoomIn, ZoomOut, Maximize2, RefreshCw } from 'lucide-react'
 
 interface IPGraphProps {
   width?: number
@@ -14,6 +15,7 @@ interface IPGraphProps {
 export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const { assets } = useIPStore()
+  const [zoomLevel, setZoomLevel] = useState(1)
 
   useEffect(() => {
     if (!svgRef.current || assets.length === 0) return
@@ -23,6 +25,16 @@ export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPG
 
     const svg = d3.select(svgRef.current)
     const g = svg.append('g')
+
+    // Add zoom behavior
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform)
+        setZoomLevel(event.transform.k)
+      })
+
+    svg.call(zoom as any)
 
     // Create nodes and edges
     const nodes: IPGraphNode[] = assets.map((asset) => ({
@@ -204,12 +216,67 @@ export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPG
       d.fy = null
     }
 
+    // Expose zoom controls
+    ;(svg.node() as any).__zoom = zoom
+
     // Cleanup
     return () => {
       tooltip.remove()
       simulation.stop()
     }
   }, [assets, width, height, onNodeClick])
+
+  const handleZoomIn = () => {
+    const svg = d3.select(svgRef.current)
+    const zoom = (svg.node() as any).__zoom
+    if (zoom) {
+      svg.transition().duration(300).call(zoom.scaleBy, 1.3)
+    }
+  }
+
+  const handleZoomOut = () => {
+    const svg = d3.select(svgRef.current)
+    const zoom = (svg.node() as any).__zoom
+    if (zoom) {
+      svg.transition().duration(300).call(zoom.scaleBy, 0.7)
+    }
+  }
+
+  const handleZoomReset = () => {
+    const svg = d3.select(svgRef.current)
+    const zoom = (svg.node() as any).__zoom
+    if (zoom) {
+      svg.transition().duration(500).call(
+        zoom.transform,
+        d3.zoomIdentity
+      )
+    }
+  }
+
+  const handleFitView = () => {
+    const svg = d3.select(svgRef.current)
+    const g = svg.select('g')
+    const bounds = (g.node() as any)?.getBBox()
+    
+    if (!bounds) return
+
+    const fullWidth = width
+    const fullHeight = height
+    const widthRatio = fullWidth / bounds.width
+    const heightRatio = fullHeight / bounds.height
+    const scale = Math.min(widthRatio, heightRatio) * 0.9
+
+    const translateX = (fullWidth - bounds.width * scale) / 2 - bounds.x * scale
+    const translateY = (fullHeight - bounds.height * scale) / 2 - bounds.y * scale
+
+    const zoom = (svg.node() as any).__zoom
+    if (zoom) {
+      svg.transition().duration(750).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+      )
+    }
+  }
 
   if (assets.length === 0) {
     return (
@@ -223,8 +290,64 @@ export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPG
   }
 
   return (
-    <div className="w-full h-full bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+    <div className="relative w-full h-full bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
       <svg ref={svgRef} width={width} height={height} className="w-full h-full" />
+      
+      {/* Graph Controls */}
+      <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+        <button
+          onClick={handleZoomIn}
+          className="p-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg text-white transition-colors shadow-lg"
+          title="Zoom In"
+        >
+          <ZoomIn className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="p-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg text-white transition-colors shadow-lg"
+          title="Zoom Out"
+        >
+          <ZoomOut className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleZoomReset}
+          className="p-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg text-white transition-colors shadow-lg"
+          title="Reset Zoom"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleFitView}
+          className="p-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg text-white transition-colors shadow-lg"
+          title="Fit to View"
+        >
+          <Maximize2 className="w-5 h-5" />
+        </button>
+      </div>
+      
+      {/* Zoom Level Indicator */}
+      <div className="absolute top-4 right-4 px-3 py-1 bg-slate-800/90 border border-slate-600 rounded-lg text-white text-sm font-medium shadow-lg">
+        {Math.round(zoomLevel * 100)}%
+      </div>
+      
+      {/* Legend */}
+      <div className="absolute top-4 left-4 bg-slate-800/90 border border-slate-600 rounded-lg p-3 shadow-lg">
+        <h4 className="text-white font-semibold text-sm mb-2">Legend</h4>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+            <span className="text-gray-300 text-xs">Original</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+            <span className="text-gray-300 text-xs">Remix</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+            <span className="text-gray-300 text-xs">Derivative</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
