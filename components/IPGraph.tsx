@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { useIPStore } from '@/store/ipStore'
 import { IPGraphNode, IPGraphEdge } from '@/types'
@@ -14,15 +14,30 @@ interface IPGraphProps {
 export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const { assets } = useIPStore()
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    if (!svgRef.current || assets.length === 0) return
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted || !svgRef.current || assets.length === 0) return
 
     // Clear previous render
     d3.select(svgRef.current).selectAll('*').remove()
 
     const svg = d3.select(svgRef.current)
     const g = svg.append('g')
+
+    // Add zoom behavior
+    const zoom = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform.toString())
+      })
+
+    svg.call(zoom as any)
 
     // Create nodes and edges
     const nodes: IPGraphNode[] = assets.map((asset) => ({
@@ -209,7 +224,17 @@ export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPG
       tooltip.remove()
       simulation.stop()
     }
-  }, [assets, width, height, onNodeClick])
+  }, [assets, width, height, onNodeClick, isMounted])
+
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        <div className="text-center">
+          <p className="text-sm">Loading graph...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (assets.length === 0) {
     return (
@@ -223,8 +248,12 @@ export default function IPGraph({ width = 1200, height = 800, onNodeClick }: IPG
   }
 
   return (
-    <div className="w-full h-full bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
-      <svg ref={svgRef} width={width} height={height} className="w-full h-full" />
+    <div className="w-full h-full bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden relative">
+      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg p-3">
+        <p className="text-xs text-gray-400 mb-1">Graph Controls</p>
+        <p className="text-xs text-gray-500">Scroll to zoom • Drag to pan • Click nodes for details</p>
+      </div>
+      <svg ref={svgRef} width={width} height={height} className="w-full h-full cursor-move" />
     </div>
   )
 }
